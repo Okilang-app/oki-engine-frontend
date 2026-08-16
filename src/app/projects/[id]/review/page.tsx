@@ -32,6 +32,30 @@ interface InternalAd {
   duration_seconds: number | null;
 }
 
+function RenderVideoPlayer({ renderId }: { renderId: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.renders
+      .playbackUrl(renderId)
+      .then((res) => setUrl(res.playback_url))
+      .catch((e) => setError(String(e)));
+  }, [renderId]);
+
+  if (error) return <p className="text-sm text-destructive">Failed to load rendered video: {error}</p>;
+  if (!url) return <Skeleton className="h-64 w-full" />;
+
+  return (
+    <video
+      src={url}
+      controls
+      className="w-full max-h-[400px] rounded-md border bg-black"
+      playsInline
+    />
+  );
+}
+
 function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -41,16 +65,11 @@ function formatTime(seconds: number): string {
 }
 
 function getSegmentLabel(candidate: SponsorCandidate): string {
-  const textMap: Record<string, string> = {
-    "8.5": "NordVPN sponsor segment",
-    "120": "Squarespace sponsor segment",
-    "280": "Amazon affiliate mention",
-    "420": "Outro CTA",
-  };
-  return (
-    textMap[String(candidate.start_time)] ||
-    `Segment at ${formatTime(candidate.start_time)}`
-  );
+  if (candidate.sponsor_name) {
+    return `${candidate.sponsor_name} (${formatTime(candidate.start_time)})`;
+  }
+  const duration = candidate.end_time - candidate.start_time;
+  return `Sponsor segment at ${formatTime(candidate.start_time)} (${Math.round(duration)}s)`;
 }
 
 export default function ReviewPage() {
@@ -631,8 +650,9 @@ export default function ReviewPage() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm text-green-600">
                       <CheckCircle className="h-4 w-4" />
-                      Render complete
+                      Render complete — this is your modified video with ads replaced
                     </div>
+                    <RenderVideoPlayer renderId={render.id} />
                     <div className="flex items-center gap-2 flex-wrap">
                       <Button
                         size="sm"

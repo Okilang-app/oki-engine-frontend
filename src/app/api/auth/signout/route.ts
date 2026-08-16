@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
-  const response = NextResponse.redirect("http://localhost:3000/");
+export async function GET(req: NextRequest) {
+  const origin = new URL(req.url).origin;
+  const response = NextResponse.redirect(origin + "/");
 
-  // Clear access_token (both httpOnly and non-httpOnly variants)
+  // Clear access_token (non-httpOnly variant)
   response.cookies.set("access_token", "", {
     httpOnly: false,
     secure: false,
@@ -18,7 +19,6 @@ export async function GET() {
     secure: false,
     maxAge: 0,
     path: "/",
-    sameSite: "lax",
   });
 
   // Clear OIDC cookies

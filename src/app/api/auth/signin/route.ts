@@ -12,7 +12,7 @@ export async function GET(_req: NextRequest) {
     client_id: config.clientMetadata().client_id,
     response_type: "code",
     scope: "openid email profile",
-    redirect_uri: "http://localhost:3000/api/auth/callback",
+    redirect_uri: `${new URL(_req.url).origin}/api/auth/callback`,
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
     state,

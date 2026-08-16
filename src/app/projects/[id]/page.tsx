@@ -11,6 +11,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Play, SkipForward, Loader2 } from "lucide-react";
 
+function RenderPlayer({ renderId }: { renderId: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    api.renders.playbackUrl(renderId).then((r) => setUrl(r.playback_url)).catch(() => {});
+  }, [renderId]);
+  if (!url) return <Skeleton className="h-48 w-full" />;
+  return (
+    <video src={url} controls className="w-full max-h-[360px] rounded-md border bg-black" playsInline />
+  );
+}
+
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [project, setProject] = useState<Project | null>(null);
@@ -316,13 +327,12 @@ export default function ProjectDetailPage() {
                     </p>
                   </div>
                   {render.output_storage_key && (
-                    <div className="space-y-2">
-                      <div>
-                        <span className="text-sm font-medium">Output:</span>
-                        <p className="text-sm text-muted-foreground break-all">
-                          {render.output_storage_key}
-                        </p>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <Play className="h-4 w-4" />
+                        Render complete — modified video with ads replaced:
                       </div>
+                      <RenderPlayer renderId={render.id} />
                       <Button
                         size="sm"
                         variant="default"

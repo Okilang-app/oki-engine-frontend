@@ -18,15 +18,8 @@ export async function GET(req: NextRequest) {
       expectedState: state,
     });
 
-    const response = NextResponse.redirect("http://localhost:3000/");
-
-    // Clear any old httpOnly access_token cookie first
-    response.cookies.set("access_token", "", {
-      httpOnly: true,
-      secure: false,
-      maxAge: 0,
-      path: "/",
-    });
+    const origin = new URL(req.url).origin;
+    const response = NextResponse.redirect(origin + "/");
 
     // access_token is NOT httpOnly so client-side JS can read it for Authorization header
     response.cookies.set("access_token", tokenSet.access_token || "", {
@@ -44,11 +37,22 @@ export async function GET(req: NextRequest) {
         path: "/",
       });
     }
-    response.cookies.delete("oidc_code_verifier");
-    response.cookies.delete("oidc_state");
+    response.cookies.set("oidc_code_verifier", "", {
+      httpOnly: true,
+      secure: false,
+      maxAge: 0,
+      path: "/",
+    });
+    response.cookies.set("oidc_state", "", {
+      httpOnly: true,
+      secure: false,
+      maxAge: 0,
+      path: "/",
+    });
     return response;
   } catch (err) {
     console.error("OAuth callback error:", err);
-    return NextResponse.redirect("http://localhost:3000/?error=oauth_callback");
+    const origin = new URL(req.url).origin;
+    return NextResponse.redirect(origin + "/?error=oauth_callback");
   }
 }
