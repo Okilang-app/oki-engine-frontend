@@ -134,7 +134,32 @@ export interface AnalyticsSummary {
   oki_conversions: number;
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+/**
+ * Refresh the access token, de-duplicated across concurrent callers.
+ *
+ * A page that fires several requests at once would otherwise refresh several
+ * times; with rotating single-use refresh tokens (revokeRefreshToken in the
+ * realm) the losers of that race invalidate the winner's token and log the
+ * user out. Sharing one in-flight promise avoids that entirely.
+ */
+let refreshInFlight: Promise<boolean> | null = null;
+
+function refreshAccessToken(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = fetch("/api/auth/refresh", {
+      method: "POST",
+      credentials: "include",
+    })
+      .then((r) => r.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return refreshInFlight;
+}
+
+async function request<T>(path: string, options?: RequestInit, isRetry = false): Promise<T> {
   const token = typeof window !== "undefined" ? getCookie("access_token") : undefined;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -160,9 +185,15 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     if (res.status === 401 && typeof window !== "undefined") {
-      // Prevent redirect loops: don't redirect if already on auth pages
-      const path = window.location.pathname;
-      if (!path.startsWith("/api/auth/")) {
+      // The realm's access tokens expire after 5 minutes. Try to refresh once
+      // and replay the request before disrupting the user — a full-page
+      // redirect here would discard whatever they were in the middle of.
+      if (!isRetry && (await refreshAccessToken())) {
+        return request<T>(path, options, true);
+      }
+      // Refresh failed: the session really is over.
+      const current = window.location.pathname;
+      if (!current.startsWith("/api/auth/")) {
         window.location.href = "/api/auth/signin";
       }
       return {} as T;

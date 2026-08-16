@@ -21,11 +21,17 @@ export async function GET(req: NextRequest) {
     const origin = new URL(req.url).origin;
     const response = NextResponse.redirect(origin + "/");
 
+    // Keycloak's accessTokenLifespan is short (300s in the oki realm). Pin the
+    // cookie to the token's real lifetime so it cannot outlive what it holds —
+    // a 1h cookie around a 5m token makes the app look logged in while every
+    // API call 401s.
+    const accessMaxAge = tokenSet.expires_in ?? 300;
+
     // access_token is NOT httpOnly so client-side JS can read it for Authorization header
     response.cookies.set("access_token", tokenSet.access_token || "", {
       httpOnly: false,
       secure: false,
-      maxAge: 3600,
+      maxAge: accessMaxAge,
       path: "/",
       sameSite: "lax",
     });
@@ -33,8 +39,19 @@ export async function GET(req: NextRequest) {
       response.cookies.set("id_token", tokenSet.id_token, {
         httpOnly: true,
         secure: false,
-        maxAge: 3600,
+        maxAge: accessMaxAge,
         path: "/",
+      });
+    }
+    // The refresh token is what keeps the session alive past those 5 minutes.
+    // httpOnly — only /api/auth/refresh needs to read it.
+    if (tokenSet.refresh_token) {
+      response.cookies.set("refresh_token", tokenSet.refresh_token, {
+        httpOnly: true,
+        secure: false,
+        maxAge: 1800, // realm ssoSessionIdleTimeout
+        path: "/",
+        sameSite: "lax",
       });
     }
     response.cookies.set("oidc_code_verifier", "", {
