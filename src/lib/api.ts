@@ -175,6 +175,7 @@ async function request<T>(path: string, options?: RequestInit, isRetry = false):
       ...options,
       headers,
       credentials: "include",
+      cache: "no-store",
     });
   } catch (networkErr) {
     // Network-level failures (browser extension interceptors, CORS blocks, etc.)

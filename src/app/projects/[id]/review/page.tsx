@@ -95,7 +95,7 @@ export default function ReviewPage() {
 
   const refresh = useCallback(() => {
     setLoading(true);
-    api.jobs
+    return api.jobs
       .sponsors(jobId)
       .then((res) => {
         setCandidates(res.candidates);
