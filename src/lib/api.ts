@@ -236,8 +236,10 @@ export const api = {
   ads: {
     list: () => request<InternalAd[]>("/api/ads"),
     create: (data: {name: string; storage_key: string; duration_seconds?: number}) =>
-      request<InternalAd>("/api/ads", {method: "POST", body: JSON.stringify(data)}),
-    delete: (id: string) => request<void>(`/api/ads/${id}`, {method: "DELETE"}),
+      request<InternalAd>("/api/ads", { method: "POST", body: JSON.stringify(data) }),
+    playbackUrl: (id: string) =>
+      request<{playback_url: string; ad_id: string}>(`/api/ads/${id}/playback-url`),
+    delete: (id: string) => request<void>(`/api/ads/${id}`, { method: "DELETE" }),
   },
   jobs: {
     list: () => request<Project[]>("/api/jobs"),

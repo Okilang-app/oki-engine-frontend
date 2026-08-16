@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef, type FormEvent } from "react"
 import { useParams, useRouter } from "next/navigation";
 import { api, type SponsorCandidate, type RenderJob } from "@/lib/api";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VideoPlayer, type VideoPlayerHandle } from "@/components/video-player";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import {
   Play,
   CheckCircle,
   ExternalLink,
+  Eye,
 } from "lucide-react";
 
 interface InternalAd {
@@ -91,6 +93,8 @@ export default function ReviewPage() {
   const [renderLoading, setRenderLoading] = useState(false);
   const renderPollRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedAds, setSelectedAds] = useState<Record<string, string>>({});
+  const [previewAdUrl, setPreviewAdUrl] = useState<string | null>(null);
+  const [previewAdName, setPreviewAdName] = useState<string | null>(null);
   const playerRef = useRef<VideoPlayerHandle>(null);
 
   const refresh = useCallback(() => {
@@ -518,7 +522,7 @@ export default function ReviewPage() {
                           <Play className="mr-2 h-4 w-4" />
                           Preview
                         </Button>
-                        {ads.length > 0 && (
+                        {ads.length > 0 ? (
                           <select
                             className="h-8 px-2 text-sm border rounded-md bg-background"
                             value={selectedAds[c.id] || c.proposed_replacement_ad_id || ""}
@@ -535,6 +539,32 @@ export default function ReviewPage() {
                               </option>
                             ))}
                           </select>
+                        ) : (
+                          <span className="text-xs text-amber-600">
+                            No ads available — upload in Ad Library
+                          </span>
+                        )}
+                        {(selectedAds[c.id] || c.proposed_replacement_ad_id) && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                            onClick={async () => {
+                              const adId = selectedAds[c.id] || c.proposed_replacement_ad_id;
+                              if (!adId) return;
+                              try {
+                                const res = await api.ads.playbackUrl(adId);
+                                setPreviewAdUrl(res.playback_url);
+                                const ad = ads.find((a) => a.id === adId);
+                                setPreviewAdName(ad?.name || chosenAdName || "Ad");
+                              } catch (e) {
+                                alert("Failed to load ad preview: " + String(e));
+                              }
+                            }}
+                          >
+                            <Eye className="mr-1 h-3 w-3" />
+                            Preview Ad
+                          </Button>
                         )}
                         <Button
                           size="sm"
@@ -705,6 +735,34 @@ export default function ReviewPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Ad Preview Modal */}
+      <Dialog
+        open={!!previewAdUrl}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewAdUrl(null);
+            setPreviewAdName(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {previewAdName ? `Preview: ${previewAdName}` : "Ad Preview"}
+            </DialogTitle>
+          </DialogHeader>
+          {previewAdUrl && (
+            <video
+              src={previewAdUrl}
+              controls
+              autoPlay
+              className="w-full rounded-md border bg-black"
+              playsInline
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
