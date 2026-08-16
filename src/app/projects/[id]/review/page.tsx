@@ -99,6 +99,14 @@ export default function ReviewPage() {
       .sponsors(jobId)
       .then((res) => {
         setCandidates(res.candidates);
+        // Pre-select any already-proposed replacement ads
+        const preselected: Record<string, string> = {};
+        for (const c of res.candidates) {
+          if (c.proposed_replacement_ad_id) {
+            preselected[c.id] = c.proposed_replacement_ad_id;
+          }
+        }
+        setSelectedAds((prev) => ({ ...preselected, ...prev }));
         return res.candidates;
       })
       .then((candidates) =>
@@ -560,9 +568,9 @@ export default function ReviewPage() {
                           size="sm"
                           variant="outline"
                           className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                          disabled={!!isActing || !selectedAds[c.id]}
+                          disabled={!!isActing || !(selectedAds[c.id] || c.proposed_replacement_ad_id)}
                           onClick={() =>
-                            handleAction(c.id, "replace", selectedAds[c.id])
+                            handleAction(c.id, "replace", selectedAds[c.id] || c.proposed_replacement_ad_id || "")
                           }
                         >
                           {isActing === "replace" ? (
